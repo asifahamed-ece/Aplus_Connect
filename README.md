@@ -13,21 +13,6 @@ Android 15/16).
 
 It talks to the phone two ways, and you can use either or both.
 
-## The two connection paths
-
-| | **ADB path** | **Companion path** |
-|---|---|---|
-| Needs a cable | Once, to enable wireless debugging | Never |
-| Needs developer options | Yes | No |
-| Screen mirroring | Full, with touch control (scrcpy) | View-only |
-| File transfer | Two-way, any folder | Browse/search the phone, download, and send files to it |
-| Clipboard | Two-way | Two-way, with no tap on the phone |
-| Notifications | App name only (text is a placeholder) | Real text, dismissible from the desktop |
-| Media control | — | Phone appears as an MPRIS player |
-
-The companion path is a small app on the phone that dials out to this desktop
-over TLS. The phone never opens a listening port.
-
 ## Features
 
 - **Companion file browser** — browse and search the phone's whole storage
@@ -121,6 +106,23 @@ npm start
 `npm start` and `npm run dev` are the same command:
 `electron . --disable-vulkan`. The window needs a real X11/Wayland session; it
 will not run headless.
+
+
+## The two connection paths
+
+| | **ADB path** | **Companion path** |
+|---|---|---|
+| Needs a cable | Once, to enable wireless debugging | Never |
+| Needs developer options | Yes | No |
+| Screen mirroring | Full, with touch control (scrcpy) | View-only |
+| File transfer | Two-way, any folder | Browse/search the phone, download, and send files to it |
+| Clipboard | Two-way | Two-way, with no tap on the phone |
+| Notifications | App name only (text is a placeholder) | Real text, dismissible from the desktop |
+| Media control | — | Phone appears as an MPRIS player |
+
+The companion path is a small app on the phone that dials out to this desktop
+over TLS. The phone never opens a listening port.
+
 
 ### Companion path: no cable, no developer options
 
