@@ -18,6 +18,7 @@ const crypto = require('crypto');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { isDeepStrictEqual } = require('util');
 const dbus = require('dbus-next');
 
 const { Interface, ACCESS_READ } = dbus.interface;
@@ -300,6 +301,47 @@ const CHANGED_PROPERTIES = [
   'CanSeek',
 ];
 
+/**
+ * The properties worth announcing, comparing what the shell already has.
+ *
+ * MPRIS has no separate "the clock moved" signal: `Position` is read on demand,
+ * so a tick only has to say that the position is new. Metadata is different -
+ * a shell rebuilds its whole media panel, cover decode included, whenever it
+ * arrives. Re-sending an unchanged track every second is what made play/pause
+ * and the artwork flicker, so a property is only included when its value
+ * actually differs from the last announcement.
+ *
+ * @param previous the values last announced, or null for the first time
+ * @param current the values now
+ */
+function changedProperties(previous, current) {
+  const changed = {};
+  for (const name of CHANGED_PROPERTIES) {
+    const value = current[name];
+    // Undefined is not a value a variant can carry; leaving it out means the
+    // shell keeps whatever it has, which is what a missing field should do.
+    if (value === undefined) continue;
+    if (previous && sameValue(previous[name], value)) continue;
+    changed[name] = value;
+  }
+  return changed;
+}
+
+/**
+ * Whether two property values are the same, by value rather than by identity.
+ *
+ * Metadata is a fresh dictionary on every read, so identity always differs and
+ * a naive comparison would announce the track on every tick. `util.isDeepStrictEqual`
+ * is used rather than JSON because `mpris:length` is a BigInt, which
+ * `JSON.stringify` refuses to serialize at all.
+ */
+function sameValue(a, b) {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (typeof a !== 'object' || typeof b !== 'object') return false;
+  return isDeepStrictEqual(a, b);
+}
+
 class MprisService extends EventEmitter {
   constructor() {
     super();
@@ -309,6 +351,8 @@ class MprisService extends EventEmitter {
     this.artUrl = null;
     this.artKey = null;
     this.artTitle = null;
+    // What the shell currently holds, so a tick only announces what moved.
+    this.announced = null;
     this.positionAt = Date.now();
     this.started = false;
   }
@@ -401,6 +445,9 @@ class MprisService extends EventEmitter {
     this.artUrl = null;
     this.artKey = null;
     this.artTitle = null;
+    // The shell is being told the player is empty, so nothing is announced
+    // twice when a track comes back.
+    this.announced = null;
     this.publishChanged();
   }
 
@@ -438,8 +485,14 @@ class MprisService extends EventEmitter {
 
   publishChanged() {
     if (!this.started || !this.player) return;
-    const changed = {};
-    for (const name of CHANGED_PROPERTIES) changed[name] = this.player[name];
+    const current = {};
+    for (const name of CHANGED_PROPERTIES) current[name] = this.player[name];
+    // Only what the shell does not already have. A one-second position tick
+    // carries nothing but Position, so a playing track is not re-announced -
+    // and its cover is not decoded - sixty times a minute.
+    const changed = changedProperties(this.announced, current);
+    this.announced = current;
+    if (Object.keys(changed).length === 0) return;
     try {
       Interface.emitPropertiesChanged(this.player, changed);
     } catch (e) {
@@ -453,6 +506,7 @@ module.exports = {
   toMetadata,
   playbackStatus,
   canPublish,
+  changedProperties,
   saveArt,
   BUS_NAME,
   OBJECT_PATH,

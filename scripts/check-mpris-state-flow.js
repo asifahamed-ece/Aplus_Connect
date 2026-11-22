@@ -106,6 +106,81 @@ console.log('mpris state flow:');
   console.log('  ok  a new track does not inherit the old cover');
 }
 
+// A position tick must not re-announce the track. A shell redraws its whole
+// media panel - decoding the cover again - whenever Metadata arrives, so
+// sending it once a second is the flicker the user sees on play/pause and art.
+{
+  const { changedProperties } = require('../services/mpris');
+
+  const before = {
+    PlaybackStatus: 'Playing',
+    Metadata: 'Song|Band|Album|file:///a.jpg',
+    CanPlay: true,
+    CanPause: true,
+  };
+  const after = { ...before, PlaybackStatus: 'Paused' };
+
+  const changed = changedProperties(before, after);
+  assert.deepStrictEqual(
+    changed,
+    { PlaybackStatus: 'Paused' },
+    'an unchanged track was announced again'
+  );
+
+  assert.deepStrictEqual(
+    changedProperties(before, before),
+    {},
+    'nothing changed, so nothing should be announced'
+  );
+
+  // A real track change must still be announced.
+  const moved = changedProperties(before, {
+    ...before,
+    Metadata: 'Next|Other|Album|file:///b.jpg',
+  });
+  assert.ok('Metadata' in moved, 'a track change was not announced');
+
+  // The first announcement has no previous snapshot to compare against.
+  assert.deepStrictEqual(
+    changedProperties(null, before),
+    before,
+    'the first announcement must carry everything'
+  );
+
+  // The real values are dbus Variants, and mpris:length is a BigInt, which
+  // JSON cannot serialize - a comparison that used it would throw or lie.
+  const { toMetadata } = require('../services/mpris');
+  const track = {
+    title: 'Song',
+    artist: 'Band',
+    album: 'Album',
+    playing: true,
+    positionMs: 1000,
+    durationMs: 180000,
+    artUrl: 'file:///a.jpg',
+  };
+  const first = { PlaybackStatus: 'Playing', Metadata: toMetadata(track), Position: 0 };
+  const tick = { ...first, Position: 1000000 };
+  assert.deepStrictEqual(
+    Object.keys(changedProperties(first, tick)),
+    ['Position'],
+    'a real Variant dictionary was re-announced on a tick'
+  );
+
+  const nextTrack = { ...tick, Metadata: toMetadata({ ...track, title: 'Other' }) };
+  assert.ok(
+    'Metadata' in changedProperties(first, nextTrack),
+    'a real track change was not announced'
+  );
+
+  const newCover = { ...tick, Metadata: toMetadata({ ...track, artUrl: 'file:///b.jpg' }) };
+  assert.ok(
+    'Metadata' in changedProperties(first, newCover),
+    'a new cover was not announced'
+  );
+  console.log('  ok  a position tick does not re-announce the track');
+}
+
 // An idle phone still has to be able to clear a stale player.
 {
   const service = new EventEmitter();
