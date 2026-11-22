@@ -308,6 +308,7 @@ class MprisService extends EventEmitter {
     this.state = null;
     this.artUrl = null;
     this.artKey = null;
+    this.artTitle = null;
     this.positionAt = Date.now();
     this.started = false;
   }
@@ -350,12 +351,25 @@ class MprisService extends EventEmitter {
     if (state.art) {
       this.artUrl = saveArt(state.art);
       this.artKey = key;
+      this.artTitle = state.title;
     } else if (state.artCleared) {
       // The phone looked for a cover for this track and there is none. Only
       // the phone can say that: a change in the text is not evidence, because
       // a player fills in the artist and the album a moment after the title.
       this.artUrl = null;
       this.artKey = key;
+      this.artTitle = state.title;
+    } else if (this.artUrl && this.artTitle !== state.title) {
+      // A cover belongs to the track that sent it, and the phone sends one
+      // only when it changes. A different title with no cover in hand means
+      // the art we still hold is the previous song's: showing the wrong cover
+      // is worse than showing none, and the phone's own art arrives within a
+      // few seconds. The artist and album are deliberately not part of this
+      // test - they land after the title on the same track, and blanking a
+      // correct cover for them is the flicker this guard exists to avoid.
+      this.artUrl = null;
+      this.artKey = null;
+      this.artTitle = null;
     }
     // Otherwise the cover we have stays. Wiping it because the text moved
     // would blank artwork that is already correct, and the phone would not
@@ -386,6 +400,7 @@ class MprisService extends EventEmitter {
     this.state = null;
     this.artUrl = null;
     this.artKey = null;
+    this.artTitle = null;
     this.publishChanged();
   }
 

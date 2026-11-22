@@ -71,6 +71,41 @@ console.log('mpris state flow:');
   console.log('  ok  a queued bus name still publishes');
 }
 
+// A cover belongs to one track. The phone sends it once per track, so a state
+// that starts a new song without one must not go on showing the last song's
+// artwork - that is worse than an empty square, because it is wrong.
+{
+  const os = require('os');
+  const fs = require('fs');
+  const path = require('path');
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'aplus-art-'));
+  const previous = process.env.XDG_CACHE_HOME;
+  process.env.XDG_CACHE_HOME = dir;
+
+  const mpris = new MprisService();
+  const art = Buffer.from('pretend this is a jpeg').toString('base64');
+  mpris.update({ title: 'First', artist: 'A', album: 'X', playing: true, art });
+  assert.ok(mpris.state.artUrl, 'the first track was given no cover at all');
+
+  mpris.update({ title: 'Second', artist: 'B', album: 'Y', playing: true });
+  assert.strictEqual(
+    mpris.state.artUrl,
+    null,
+    "a new track kept the previous track's cover"
+  );
+
+  // The phone filling in the artist or the album of the *same* track must not
+  // blank the cover that is already right.
+  mpris.update({ title: 'Second', artist: 'B', album: 'Y', playing: true, art });
+  mpris.update({ title: 'Second', artist: 'B', album: 'Y (Deluxe)', playing: true });
+  assert.ok(mpris.state.artUrl, 'a late album field blanked a correct cover');
+
+  if (previous === undefined) delete process.env.XDG_CACHE_HOME;
+  else process.env.XDG_CACHE_HOME = previous;
+  fs.rmSync(dir, { recursive: true, force: true });
+  console.log('  ok  a new track does not inherit the old cover');
+}
+
 // An idle phone still has to be able to clear a stale player.
 {
   const service = new EventEmitter();

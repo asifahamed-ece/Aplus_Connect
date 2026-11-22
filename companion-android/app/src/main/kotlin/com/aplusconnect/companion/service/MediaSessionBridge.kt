@@ -59,7 +59,13 @@ class MediaSessionBridge(
     /** The track whose cover was already delivered; the cover goes once per track. */
     private var lastCoverKey: String? = null
 
-    /** A track the phone has already reported as having no cover at all. */
+    /**
+     * A track the phone has looked for a cover for and told the computer about.
+     *
+     * Only the *announcement* is once per track: the search itself is retried,
+     * because a player often attaches its artwork a second or two after the
+     * track starts.
+     */
     private var lastCoverMissKey: String? = null
 
     /** The package of the player last published, which the idle message names. */
@@ -85,8 +91,9 @@ class MediaSessionBridge(
     private var seekTargetMs: Long? = null
     private var seekTargetAt = 0L
 
-    /** When the last cover attempt was made, so a miss is not retried every second. */
+    /** When the last cover attempt was made, and for which track. */
     private var lastCoverAttemptAt = 0L
+    private var lastCoverAttemptKey: String? = null
 
     @Volatile
     private var running = false
@@ -307,6 +314,8 @@ class MediaSessionBridge(
             pendingCoverKey = null
             lastPlaceholderKey = null
             lastCoverMissKey = null
+            lastCoverAttemptKey = null
+            lastCoverAttemptAt = 0L
         }
     }
 
@@ -329,17 +338,24 @@ class MediaSessionBridge(
             "${metadata.getString(MediaMetadata.METADATA_KEY_ARTIST).orEmpty()}|" +
             "${metadata.getString(MediaMetadata.METADATA_KEY_ALBUM).orEmpty()}"
 
-        if (key == lastCoverKey) return Cover.Unchanged
-
-        // Already told the computer this track has no cover: saying it again
-        // every second would be noise.
-        if (key == lastCoverMissKey) return Cover.None
-
-        // A player often attaches the cover a moment after the track starts,
-        // so a miss is not final. Try again - but not every second.
+        // Already delivered this track's cover, or looked for it too recently.
+        // A miss used to be final for the whole track, which is why a player
+        // that attaches its artwork late showed an empty square until the next
+        // song. The search is now retried; the announcement is not.
         val now = System.currentTimeMillis()
-        if (now - lastCoverAttemptAt < COVER_RETRY_MS) return Cover.Unchanged
+        if (!CoverPolicy.shouldLook(
+                key = key,
+                deliveredKey = lastCoverKey,
+                attemptKey = lastCoverAttemptKey,
+                lastAttemptAt = lastCoverAttemptAt,
+                now = now,
+                retryMs = COVER_RETRY_MS,
+            )
+        ) {
+            return Cover.Unchanged
+        }
         lastCoverAttemptAt = now
+        lastCoverAttemptKey = key
 
         val artwork = coverBitmap(metadata)
         if (artwork != null) {
@@ -354,8 +370,10 @@ class MediaSessionBridge(
             return encodeJpeg(icon)?.let { Cover.Ready(it, real = false) } ?: Cover.Unchanged
         }
 
-        // Looked, and there is nothing. The computer is told so once, which is
-        // what stops it from wiping a cover it should keep.
+        // Looked, and there is nothing - not even an icon. The computer is told
+        // so once, which is what stops it from keeping the previous track's
+        // cover; saying it again on every retry would be noise.
+        if (!CoverPolicy.shouldAnnounceMiss(key, lastCoverMissKey)) return Cover.Unchanged
         lastCoverMissKey = key
         return Cover.None
     }
