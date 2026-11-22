@@ -22,6 +22,10 @@ keyboard/heliboard/
 # Kotlin build cache, written by Gradle on every Android build.
 .kotlin/
 
+# Gradle's own per-project cache. Each subproject has a scoped rule, but a
+# Gradle run in any other directory leaves one that nothing else covers.
+.gradle/
+
 .playwright-mcp/
 
 # Ephemeral reverse-engineering scratch files — never commit.
