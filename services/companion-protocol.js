@@ -50,6 +50,8 @@ const TYPES = {
   MEDIA_STATE: 'media-state',
   MEDIA_OFF: 'media-off',
   MEDIA_COMMAND: 'media-command',
+  /** Desktop → phone: republish the current track after a reconnect. */
+  MEDIA_STATE_REQUEST: 'media-state-request',
   FILE_LIST_REQUEST: 'file-list-request',
   FILE_LIST: 'file-list',
   FILE_SEND_REQUEST: 'file-send-request',

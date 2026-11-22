@@ -1295,6 +1295,26 @@ class CompanionService extends EventEmitter {
     return sendToPhones(this, frame, 'a media command') > 0;
   }
 
+  /**
+   * Asks the connected phone to publish its current track again.
+   *
+   * The phone already does this when the link comes up, but that one frame is
+   * easy to lose (the socket is barely ready) and it is gone for good if the
+   * desktop restarted while the phone was away. Asking makes the shell's media
+   * panel independent of the order the two sides came up in.
+   */
+  requestMediaState() {
+    console.log('[mpris] asking the phone for its current track');
+    const frame = protocol.encode({
+      version: protocol.PROTOCOL_VERSION,
+      type: protocol.TYPES.MEDIA_STATE_REQUEST,
+      id: crypto.randomUUID(),
+      ts: Date.now(),
+      payload: {},
+    });
+    return sendToPhones(this, frame, 'a media-state request') > 0;
+  }
+
   updateStatus() {
     const connected = this.connectedClients;
     if (!this.enabled) {

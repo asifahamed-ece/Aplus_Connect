@@ -326,6 +326,12 @@ class MprisService extends EventEmitter {
 
   /** Takes a state from the phone and tells every listener about it. */
   update(state) {
+    // An empty or malformed frame means the phone has nothing to show. Withdraw
+    // the player rather than throwing on the first field access.
+    if (!state) {
+      this.clear();
+      return;
+    }
     const key = `${state.title}|${state.artist}|${state.album}`;
     if (state.art) {
       this.artUrl = saveArt(state.art);

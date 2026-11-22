@@ -6,6 +6,52 @@ All notable changes to A+ Connect are recorded here. The format follows
 
 ## [Unreleased]
 
+## [1.1.5] — 2026-11-22
+
+Both halves ship in this release: the desktop AppImage and the Android
+companion APK.
+
+### Fixed
+
+- **"Send to phone" no longer fails with "You are not authorized to execute
+  this file."** The Dolphin service menu and the "Open With" entry were written
+  with the default `0644` mode, and KDE refuses to launch a `.desktop` file that
+  is not executable. Both entries are now installed `0755`, and the mode is set
+  explicitly so an in-place upgrade repairs an existing entry. The helper script
+  that performs the send was already executable, which is why running it by hand
+  worked while clicking the menu did not.
+- **The phone's track appears in the desktop media panel after a reconnect.**
+  A phone that connected while the desktop already had an empty MPRIS player
+  never republished its current track, so Caelestia, Waybar and `playerctl`
+  showed an empty player until the next song. The desktop now asks the phone for
+  its current track on every pairing, and a `media-state-request` message was
+  added to the companion protocol for that purpose.
+- **Media publishing recovers when notification access is granted late.** The
+  phone's media bridge started once when the service was created; if
+  notification access was missing at that moment it never retried. It is now
+  retried on connect and on request.
+- **A malformed or empty media state withdraws the player instead of crashing
+  the publisher.** `MprisService.update(null)` previously threw on the first
+  metadata field access.
+
+### Changed
+
+- Media state transitions and idle events are now logged, so a phone that
+  publishes nothing is distinguishable from a shell that displays nothing.
+
+## [1.1.4] — 2026-11-19
+
+### Fixed
+
+- Tolerate missed `adb` polls before dropping the device.
+- Post file-transfer notifications with progress and a cancel action.
+- Keep the Cancel button clickable during transfer progress.
+- Await the sycoca rebuild so Dolphin finds the send menu.
+
+### Added
+
+- A "send to phone" entry in the KDE service menu and the Android share target.
+
 ## [1.1.2] — 2026-11-16
 
 Desktop-only release. The Android companion app and the keyboard APK are

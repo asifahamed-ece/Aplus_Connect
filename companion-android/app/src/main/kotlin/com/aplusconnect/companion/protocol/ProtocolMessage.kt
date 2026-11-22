@@ -23,6 +23,8 @@ object Protocol {
     const val TYPE_NOTIFICATION_ACTION = "notification-action"
     const val TYPE_MEDIA_STATE = "media-state"
     const val TYPE_MEDIA_COMMAND = "media-command"
+    /** Desktop → phone: republish the current track after a reconnect. */
+    const val TYPE_MEDIA_STATE_REQUEST = "media-state-request"
     const val TYPE_FILE_LIST_REQUEST = "file-list-request"
     const val TYPE_FILE_LIST = "file-list"
     const val TYPE_FILE_SEND_REQUEST = "file-send-request"

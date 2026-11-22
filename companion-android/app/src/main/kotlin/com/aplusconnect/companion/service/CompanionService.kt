@@ -508,8 +508,13 @@ class CompanionService : Service() {
                     updateNotification("Connected to ${settings.host}")
                     sendThread.execute { flushPending(); flushNotifications() }
                     // A desktop that just connected wants the current track,
-                    // not one that appears at the next state change.
-                    mediaBridge?.publish()
+                    // not one that appears at the next state change. start() is
+                    // a no-op when already running, and retries the case where
+                    // notification access arrived after the service started.
+                    android.os.Handler(android.os.Looper.getMainLooper()).post {
+                        mediaBridge?.start()
+                        mediaBridge?.publish()
+                    }
                     // The storage walk is slow, so it starts now rather than on
                     // the user's first keystroke in the search box.
                     searchThread.execute { searcher()?.warm() }
@@ -571,6 +576,16 @@ class CompanionService : Service() {
             },
             onMediaCommand = { command, positionMs ->
                 mediaBridge?.command(command, positionMs)
+            },
+            onMediaStateRequest = {
+                // The desktop restarted or the link came back up: its player is
+                // empty. Retry the listener grant, then publish what is playing.
+                // This callback runs on the socket reader thread; the media
+                // session listener needs the main thread's Looper.
+                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                    mediaBridge?.start()
+                    mediaBridge?.publish()
+                }
             },
             onFileListRequest = { path ->
                 fileThread.execute { answerFileList(path) }

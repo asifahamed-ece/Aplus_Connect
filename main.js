@@ -495,6 +495,9 @@ function setupServiceEvents() {
     // twice.
     notifications.stop();
     updateTrayMenu();
+    // A desktop that just came up has an empty MPRIS player. Ask the phone to
+    // republish its current track instead of waiting for the next song.
+    companion.requestMediaState();
     sendToRenderer('event:companion-paired', data);
   });
 
@@ -546,8 +549,15 @@ function setupServiceEvents() {
     // An idle state means the phone stopped playing: withdraw the player
     // rather than leaving the shell showing a track that ended minutes ago.
     if (state && state.idle) {
+      console.log('[mpris] phone went idle; withdrawing the player');
       mpris.clear();
       return;
+    }
+    // The app used to log to /dev/null, so a phone that never published a
+    // track looked identical to a shell that failed to display one. Log the
+    // transition, not every position tick.
+    if (!mpris.state || mpris.state.title !== state?.title) {
+      console.log(`[mpris] phone track: ${state?.title || '(none)'}`);
     }
     mpris.update(state);
   });

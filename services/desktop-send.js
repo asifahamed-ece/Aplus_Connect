@@ -226,10 +226,19 @@ class DesktopSendService extends EventEmitter {
       console.error('[desktop-send] could not install the send helper:', e.message);
     }
 
+    // KDE's KRun refuses to start a .desktop file that is not executable and
+    // reports it as "You are not authorized to execute this file." - the exact
+    // text the user saw when clicking the menu. The helper was already 0755;
+    // these entries were written with the default 0644, so every click failed
+    // while running the helper by hand worked.
     for (const dir of KDE_DIRS) {
       try {
         fs.mkdirSync(dir, { recursive: true });
-        fs.writeFileSync(path.join(dir, DESKTOP_NAME), DESKTOP_CONTENT);
+        const file = path.join(dir, DESKTOP_NAME);
+        fs.writeFileSync(file, DESKTOP_CONTENT, { mode: 0o755 });
+        // writeFileSync's mode is masked by the umask and ignored when the file
+        // already exists, so set it explicitly for upgrades in place.
+        fs.chmodSync(file, 0o755);
       } catch (e) {
         console.error(`[desktop-send] could not install ${dir}:`, e.message);
       }
@@ -240,7 +249,9 @@ class DesktopSendService extends EventEmitter {
     // then offers it as "Open With".
     try {
       fs.mkdirSync(APPLICATIONS_DIR, { recursive: true });
-      fs.writeFileSync(path.join(APPLICATIONS_DIR, DESKTOP_NAME), APP_CONTENT);
+      const file = path.join(APPLICATIONS_DIR, DESKTOP_NAME);
+      fs.writeFileSync(file, APP_CONTENT, { mode: 0o755 });
+      fs.chmodSync(file, 0o755);
     } catch (e) {
       console.error(`[desktop-send] could not install the Open With entry:`, e.message);
     }

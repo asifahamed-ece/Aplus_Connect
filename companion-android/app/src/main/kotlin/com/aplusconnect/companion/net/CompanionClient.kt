@@ -47,6 +47,7 @@ class CompanionClient(
     private val onFileDone: (id: String) -> Unit = { },
     private val onNotificationAction: (id: String, action: String) -> Unit = { _, _ -> },
     private val onMediaCommand: (command: String, positionMs: Long?) -> Unit = { _, _ -> },
+    private val onMediaStateRequest: () -> Unit = {},
     private val onFileListRequest: (path: String) -> Unit = { },
     private val onFileSendRequest: (path: String, requestId: String) -> Unit = { _, _ -> },
     private val onFileSearchRequest: (query: String, fresh: Boolean) -> Unit = { _, _ -> },
@@ -593,6 +594,15 @@ class CompanionClient(
                         // A player that refuses a command must not cost us the
                         // connection: this runs on the reader thread.
                         Log.w(TAG, "the media command failed: ${e.message}")
+                    }
+                    continue
+                }
+
+                if (message.type == Protocol.TYPE_MEDIA_STATE_REQUEST) {
+                    try {
+                        onMediaStateRequest()
+                    } catch (e: Exception) {
+                        Log.w(TAG, "the media-state request failed: ${e.message}")
                     }
                     continue
                 }
