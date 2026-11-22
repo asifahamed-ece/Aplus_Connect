@@ -59,6 +59,18 @@ console.log('mpris state flow:');
   console.log('  ok  a reconnect asks the phone for the current track');
 }
 
+// A name that is queued is still ours in waiting. Treating reply 2 as failure
+// left `started` false, so PropertiesChanged was never emitted and a shell that
+// enumerated the player once showed the first track forever.
+{
+  const { canPublish } = require('../services/mpris');
+  assert.strictEqual(canPublish(1), true, 'a primary owner must publish');
+  assert.strictEqual(canPublish(2), true, 'a queued name must publish once it becomes ours');
+  assert.strictEqual(canPublish(4), true, 'an existing owner must publish');
+  assert.strictEqual(canPublish(3), false, 'a name owned by someone else must not publish');
+  console.log('  ok  a queued bus name still publishes');
+}
+
 // An idle phone still has to be able to clear a stale player.
 {
   const service = new EventEmitter();

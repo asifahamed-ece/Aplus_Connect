@@ -56,6 +56,19 @@ function playbackStatus(state) {
 }
 
 /**
+ * Whether a RequestName reply leaves us able to publish the player.
+ *
+ * 1 = primary owner, 4 = already owner, and 2 = queued behind a connection that
+ * is going away. Reply 2 used to be treated as a failure, which left `started`
+ * false: the name was later acquired, but PropertiesChanged was never emitted,
+ * so a shell showed the first track forever. 3 means someone else owns it and
+ * is not leaving, so there is nothing to publish to.
+ */
+function canPublish(reply) {
+  return reply === 1 || reply === 2 || reply === 4;
+}
+
+/**
  * Writes a cover to a cache file and returns its file:// URL.
  *
  * MPRIS points at the art with `mpris:artUrl`, so the bitmap has to exist
@@ -311,13 +324,14 @@ class MprisService extends EventEmitter {
       this.bus.export(OBJECT_PATH, this.player);
 
       const reply = await this.bus.requestName(BUS_NAME, 0);
-      // 1 = primary owner, 4 = already owner.
-      if (reply !== 1 && reply !== 4) {
+      if (!canPublish(reply)) {
         console.log(`[mpris] could not own ${BUS_NAME} (request returned ${reply})`);
         return;
       }
       this.started = true;
-      console.log(`[mpris] publishing the phone as ${BUS_NAME}`);
+      if (reply === 2)
+        console.log(`[mpris] queued for ${BUS_NAME}; will publish once the old owner exits`);
+      else console.log(`[mpris] publishing the phone as ${BUS_NAME}`);
     } catch (e) {
       // A desktop with no session bus simply does not get the player.
       console.error('[mpris] could not publish the player:', e.message);
@@ -423,6 +437,7 @@ module.exports = {
   MprisService,
   toMetadata,
   playbackStatus,
+  canPublish,
   saveArt,
   BUS_NAME,
   OBJECT_PATH,
