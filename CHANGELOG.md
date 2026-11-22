@@ -33,6 +33,25 @@ companion APK.
 - **A malformed or empty media state withdraws the player instead of crashing
   the publisher.** `MprisService.update(null)` previously threw on the first
   metadata field access.
+- **Artwork stays with the track that sent it.** A cover was kept until the
+  phone sent a replacement, so a song with no art showed the previous song's
+  cover - worse than an empty square, because it was wrong. A state that starts
+  a new title with no cover in hand now drops the old one. The artist and album
+  are deliberately not part of that test, because they arrive after the title on
+  the same track.
+- **A cover that arrives late is still picked up.** The phone gave up on a
+  track's artwork after one look, so a player that attached its cover a second
+  after the track started showed no art for the whole song. The search is now
+  retried, while the "this track has no cover" announcement is still sent once.
+- **The media panel no longer flickers.** Every one-second position tick
+  re-announced the full `Metadata` dictionary, so a shell rebuilt its whole
+  media panel - cover decode included - once a second, and play/pause appeared
+  to jitter. Only properties whose value actually changed are announced now, so
+  a tick carries nothing but `Position`.
+- **MPRIS publishing recovers when the bus name is queued.** A `RequestName`
+  reply of `2` (queued behind a connection that is going away) was treated as a
+  failure, which left the publisher silent forever: the player showed the first
+  track it ever received and never updated again.
 
 ### Changed
 
