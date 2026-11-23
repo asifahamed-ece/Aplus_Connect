@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-labelledby="title desc">
+  <title id="title">A+ Connect</title>
+  <desc id="desc">A blue A plus symbol with a softly pulsing connection between two nodes.</desc>
+  <style>
+    .mark,
+    .connector,
+    .node {
+      stroke: #2457e0;
+    }
+
+    .flow {
+      stroke: #14d2ff;
+      stroke-dasharray: 4 6;
+      stroke-dashoffset: 10;
+      animation: connection-flow 2.4s linear infinite;
+    }
+
+    .node {
+      animation: node-pulse 2.4s ease-in-out infinite;
+    }
+
+    .node-right {
+      animation-delay: 0.3s;
+    }
+
+    @keyframes connection-flow {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    @keyframes node-pulse {
+      0%, 100% {
+        opacity: 0.72;
+      }
+      50% {
+        opacity: 1;
+      }
+    }
+
+    @media (prefers-color-scheme: dark) {
+      .mark,
+      .connector,
+      .node {
+        stroke: #7aa2ff;
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .flow,
+      .node {
+        animation: none;
+      }
+
+      .flow {
+        opacity: 0.35;
+      }
+    }
+  </style>
+
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path class="mark" d="M8 55 25 8l18 47" stroke-width="8" />
+    <path class="mark" d="M50 6v20M40 16h20" stroke-width="8" />
+
+    <path class="connector" d="M19 38h13" stroke-width="3.5" />
+    <path class="flow" d="M19 38h13" stroke-width="3.5" />
+
+    <circle class="node" cx="19" cy="38" r="4.5" stroke-width="3.5" />
+    <circle class="node node-right" cx="32" cy="38" r="4.5" stroke-width="3.5" />
+  </g>
+</svg>
